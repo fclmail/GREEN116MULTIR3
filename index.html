@@ -287,33 +287,47 @@
     const usdcAddress = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174";
 
     document.getElementById("connectWallet").onclick = async () => {
-      provider = new ethers.providers.Web3Provider(window.ethereum);
-      await provider.send("eth_requestAccounts", []);
-      signer = provider.getSigner();
-      const walletAddress = await signer.getAddress();
-      document.getElementById("wallet").textContent = walletAddress;
-      contract = new ethers.Contract(contractAddress, contractABI, signer);
-      log("✅ Wallet connected: " + walletAddress);
-      await updateAllBalances();
+      try {
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        await provider.send("eth_requestAccounts", []);
+        signer = provider.getSigner();
+        const walletAddress = await signer.getAddress();
+        document.getElementById("wallet").textContent = walletAddress;
+        contract = new ethers.Contract(contractAddress, contractABI, signer);
+        log("✅ Wallet connected: " + walletAddress);
+        await updateAllBalances();
+      } catch (err) {
+        log("❌ Wallet connection failed: " + err.message);
+      }
     };
 
     async function updateAllBalances() {
-      const usdc = new ethers.Contract(usdcAddress, ["function balanceOf(address) view returns (uint256)", "function decimals() view returns (uint8)"], provider);
-      const decimals = await usdc.decimals();
-      const walletBal = await usdc.balanceOf(await signer.getAddress());
-      const contractBal = await usdc.balanceOf(contractAddress);
+      try {
+        const usdc = new ethers.Contract(usdcAddress, ["function balanceOf(address) view returns (uint256)", "function decimals() view returns (uint8)"], provider);
+        const decimals = await usdc.decimals();
+        const walletBal = await usdc.balanceOf(await signer.getAddress());
+        const contractBal = await usdc.balanceOf(contractAddress);
 
-      document.getElementById("walletBalance").textContent = (walletBal / 10 ** decimals).toFixed(4);
-      document.getElementById("contractBalance").textContent = (contractBal / 10 ** decimals).toFixed(4);
+        document.getElementById("walletBalance").textContent = (walletBal / 10 ** decimals).toFixed(4);
+        document.getElementById("contractBalance").textContent = (contractBal / 10 ** decimals).toFixed(4);
 
-      let html = '';
-      for (const [symbol, addr] of Object.entries(tokens)) {
-        const token = new ethers.Contract(addr, ["function balanceOf(address) view returns (uint256)", "function decimals() view returns (uint8)"], provider);
-        const bal = await token.balanceOf(contractAddress);
-        const dec = await token.decimals();
-        html += `<div class="token-balance">${symbol}: ${(bal / 10 ** dec).toFixed(4)}</div>`;
+        let html = '';
+        for (const [symbol, addr] of Object.entries(tokens)) {
+          const token = new ethers.Contract(addr, ["function balanceOf(address) view returns (uint256)", "function decimals() view returns (uint8)"], provider);
+          const bal = await token.balanceOf(contractAddress);
+          const dec = await token.decimals();
+          html += `<div class="token-balance">${symbol}: ${(bal / 10 ** dec).toFixed(4)}</div>`;
+        }
+        document.getElementById("tokenBalances").innerHTML = html;
+      } catch (err) {
+        log("❌ Failed to fetch balances: " + err.message);
       }
-      document.getElementById("tokenBalances").innerHTML = html;
+    }
+
+    function log(msg) {
+      const logDiv = document.getElementById("log");
+      const ts = new Date().toLocaleTimeString();
+      logDiv.innerHTML = `[${ts}] ${msg}<br>` + logDiv.innerHTML;
     }
   </script>
 </body>
